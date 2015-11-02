@@ -35,4 +35,5 @@ build/
 .rvmrc
 
 *.bmp
+*.html
 todomvc/

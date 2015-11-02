@@ -1,6 +1,4 @@
 class HTTPRequest
-  attr_reader :request_type, :file_path, :protocol
-
   def initialize(request)
     @request_type, @file_path, @protocol = request.split
 
@@ -15,12 +13,11 @@ class HTTPRequest
   def response
     Fiber.new do
       begin
-        Fiber.yield response_headers
-
         case @request_type
         when 'HEAD'
-          # Do nothing, HEAD just sends back headers
+          Fiber.yield response_headers
         when 'GET'
+          Fiber.yield response_headers
           # TODO: read binary file?
           file =  File.open(@file_path, 'r')
           # TODO: read sections in a non-blocking way
@@ -44,8 +41,8 @@ class HTTPRequest
 
       response
     else
+      # TODO: exception class
       fail 'FileNotFound'
-      #"HTTP/1.0 404 Not Found\r\n\r\n"
     end
   end
 end

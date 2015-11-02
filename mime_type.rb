@@ -14,7 +14,7 @@ class MimeType
     case file_extension
     when 'html'
       'text/html'
-    when 'jpg'
+    when /jpe?g/
       'image/jpeg'
     when 'png'
       'image/png'
