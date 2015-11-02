@@ -12,25 +12,26 @@ class HTTPRequest
     end
   end
 
-  def build_response
-    response = ""
+  def response
+    Fiber.new do
+      begin
+        Fiber.yield response_headers
 
-    begin
-      response = response_headers
-
-      case @request_type
-      when 'HEAD'
-        # Do nothing, HEAD just sends back headers
-      when 'GET'
-        # TODO: read binary file?
-        file =  File.open(@file_path, 'r')
-        response += file.read
+        case @request_type
+        when 'HEAD'
+          # Do nothing, HEAD just sends back headers
+        when 'GET'
+          # TODO: read binary file?
+          file =  File.open(@file_path, 'r')
+          # TODO: read sections in a non-blocking way
+          Fiber.yield file.read
+        end
+      rescue => e
+        Fiber.yield "HTTP/1.0 404 Not Found\r\n\r\n"
       end
-    rescue => e
-      response = "HTTP/1.0 404 Not Found\r\n\r\n"
-    end
 
-    response
+      Fiber.yield nil
+    end
   end
 
   private
