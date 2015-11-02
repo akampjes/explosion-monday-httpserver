@@ -3,13 +3,17 @@ require 'socket'
 server = TCPServer.new(8080)
 
 class HTTPRequest
-  attr_reader :request_type, :filename, :protocol
+  attr_reader :request_type, :file_path, :protocol
 
   def initialize(request)
-    @request_type, @filename, @protocol = request.split
+    @request_type, @file_path, @protocol = request.split
 
-    # TODO: sanitise and validate filename
-    @filename = @filename.gsub(/\A\//, '')
+    # TODO: sanitise and validate file_path
+    @file_path = @file_path.gsub(/\A\//, '')
+
+    unless File.file?(@file_path)
+      @file_path += "/index.html" if File.file?(@file_path + "/index.html")
+    end
   end
 
   def build_response
@@ -23,7 +27,7 @@ class HTTPRequest
         # Do nothing, HEAD just sends back headers
       when 'GET'
         # TODO: read binary file?
-        file =  File.open(@filename, 'r')
+        file =  File.open(@file_path, 'r')
         response += file.read
       end
     rescue => e
@@ -36,15 +40,47 @@ class HTTPRequest
   private
 
   def response_headers
-    if(File.exists?(@filename))
+    if(File.file?(@file_path))
       response = "HTTP/1.0 200 OK\r\n"
-      response += "Content-Type: text/plain\r\n"
+      response += "Content-Type: #{mime_type}\r\n"
       response +=  "\r\n"
 
       response
     else
       fail 'FileNotFound'
       #"HTTP/1.0 404 Not Found\r\n\r\n"
+    end
+  end
+
+  def file_extension
+    file_name = @file_path.split('/')[-1]
+    file_parts = file_name.split('.')
+
+    if file_parts.length > 1
+      file_parts[-1]
+    else
+      ''
+    end
+  end
+
+  def mime_type
+    case file_extension
+    when 'html'
+      'text/html'
+    when 'jpg'
+      'image/jpeg'
+    when 'png'
+      'image/png'
+    when 'svg'
+      'image/svg+xml'
+    when 'css'
+      'text/css'
+    when 'js'
+      'application/javascript'
+    when 'txt'
+      'text/plain'
+    else
+      'text/plain'
     end
   end
 end
