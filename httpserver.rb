@@ -1,4 +1,5 @@
 require 'socket'
+require_relative 'mime_type'
 
 server = TCPServer.new(8080)
 
@@ -42,45 +43,13 @@ class HTTPRequest
   def response_headers
     if(File.file?(@file_path))
       response = "HTTP/1.0 200 OK\r\n"
-      response += "Content-Type: #{mime_type}\r\n"
+      response += "Content-Type: #{MimeType.from_file(@file_path)}\r\n"
       response +=  "\r\n"
 
       response
     else
       fail 'FileNotFound'
       #"HTTP/1.0 404 Not Found\r\n\r\n"
-    end
-  end
-
-  def file_extension
-    file_name = @file_path.split('/')[-1]
-    file_parts = file_name.split('.')
-
-    if file_parts.length > 1
-      file_parts[-1]
-    else
-      ''
-    end
-  end
-
-  def mime_type
-    case file_extension
-    when 'html'
-      'text/html'
-    when 'jpg'
-      'image/jpeg'
-    when 'png'
-      'image/png'
-    when 'svg'
-      'image/svg+xml'
-    when 'css'
-      'text/css'
-    when 'js'
-      'application/javascript'
-    when 'txt'
-      'text/plain'
-    else
-      'text/plain'
     end
   end
 end
