@@ -1,68 +1,32 @@
 require 'socket'
+require 'thread'
 require_relative 'mime_type'
+require_relative 'http_request'
 
-server = TCPServer.new(8080)
+NUMBER_OF_WORKER_THREADS = 4
+SERVER_PORT = 8080
 
-class HTTPRequest
-  attr_reader :request_type, :file_path, :protocol
+connections_queue = Queue.new
 
-  def initialize(request)
-    @request_type, @file_path, @protocol = request.split
+server = TCPServer.new(SERVER_PORT)
 
-    # TODO: sanitise and validate file_path
-    @file_path = @file_path.gsub(/\A\//, '')
+workrs = (0...NUMBER_OF_WORKER_THREADS).map do
+  Thread.new do
+    loop do
+      conn = connections_queue.pop
 
-    unless File.file?(@file_path)
-      @file_path += "/index.html" if File.file?(@file_path + "/index.html")
-    end
-  end
+      request = conn.gets
 
-  def build_response
-    response = ""
+      puts request
 
-    begin
-      response = response_headers
-
-      case @request_type
-      when 'HEAD'
-        # Do nothing, HEAD just sends back headers
-      when 'GET'
-        # TODO: read binary file?
-        file =  File.open(@file_path, 'r')
-        response += file.read
-      end
-    rescue => e
-      response = "HTTP/1.0 404 Not Found\r\n\r\n"
-    end
-
-    response
-  end
-
-  private
-
-  def response_headers
-    if(File.file?(@file_path))
-      response = "HTTP/1.0 200 OK\r\n"
-      response += "Content-Type: #{MimeType.from_file(@file_path)}\r\n"
-      response +=  "\r\n"
-
-      response
-    else
-      fail 'FileNotFound'
-      #"HTTP/1.0 404 Not Found\r\n\r\n"
+      http_request = HTTPRequest.new(request)
+      conn.print http_request.build_response
+      conn.close
     end
   end
 end
-
 
 loop do
-  client = server.accept
-  request = client.gets
-  puts request
-
-  # GET /testfile.txt HTTP/1.0
-  http_request = HTTPRequest.new(request)
-  client.print http_request.build_response
-  client.close
+  connection = server.accept
+  connections_queue << connection
 end
-
